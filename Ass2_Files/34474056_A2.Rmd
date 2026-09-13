@@ -5,26 +5,187 @@ date: "2026-09-6"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+# FIT5145 Assignment 2
+
+## Loading Libraries and Datasets
+
+```{r}
+library(tidyverse)
+library(stringr)
+library(scales)
+
+# Read files
+wastes <- read_csv("Wastes.csv")
+year_state <- read_csv("Year_State_ID.csv")
 ```
 
-## R Markdown
+## Initial Inspection of Datasets
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+```{r}
+# Roughly look at the datasets
+glimpse(wastes)
+glimpse(year_state)
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+# Looking at summary to see if anything is out of line
+summary(wastes)
 
-```{r cars}
-summary(cars)
+# Looking for NA entries for each columns
+colSums(is.na(wastes))
 ```
 
-## Including Plots
+## **Q1**
 
-You can also embed plots, for example:
+**How many unique “Category” values are there in the data file (6 marks)?**
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+### 1a. Inspecting raw data for Category values
+
+```{r}
+# Inspect all Category values and their frequencies
+wastes %>%
+  count(Category, sort = TRUE)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+### 1b. Checking other Types to reassign some suspicious Category values
+
+```{r}
+# Extracting suspicious Category
+suspicious_categories <- c(
+  "organics",
+  "Plastic",
+  "Building & demolition materials",
+  "HW",
+  "Toxic wastes",
+  "Aluminium",
+  "Metals & Organics",
+  "Recycling",
+  "Space debris"
+)
+
+# Inspecting suspicious Category values
+wastes %>%
+  filter(
+    Category %in% suspicious_categories |
+      is.na(Category)
+  ) %>%
+  select(
+    Case_ID,
+    Category,
+    Type,
+    Stream,
+    Fate,
+    Tonnes
+  )
+```
+
+```{r}
+# Find the Types associated with the suspicious Category values
+suspicious_types <- wastes %>%
+  filter(Category %in% suspicious_categories) %>%
+  distinct(Category, Type) %>%
+  arrange(Category, Type)
+
+suspicious_types
+```
+
+```{r}
+# Verifying the common Category associated with these types
+wastes %>%
+  semi_join(
+    suspicious_types,
+    by = "Type"
+  ) %>%
+  count(Type, Category) %>%
+  arrange(Type, desc(n))
+```
+
+```{r}
+# Find Types where Category is missing
+missing_category_types <- wastes %>%
+  filter(is.na(Category)) %>%
+  distinct(Type)
+
+missing_category_types
+```
+
+```{r}
+# Check where those Types normally belong
+wastes %>%
+  semi_join(
+    missing_category_types,
+    by = "Type"
+  ) %>%
+  filter(!is.na(Category)) %>%
+  count(Type, Category, sort = TRUE)
+```
+
+### 1c. Cleaning the Category values
+
+```{r}
+wastes_clean <- wastes %>%
+  mutate(
+    Category = case_when(
+      
+      # Naming inconsistencies
+      Category == "organics" ~ "Organics",
+      Category == "Plastic" ~ "Plastics",
+      Category == "Building & demolition materials" ~
+        "Building and demolition materials",
+      
+      # Wrongly classified values verified using Type
+      Category == "Aluminium" ~ "Metals",
+      Category == "Metals & Organics" ~ "Organics",
+      Category == "Recycling" ~ "Plastics",
+      Category == "HW" ~ "Hazardous wastes",
+      Category == "Toxic wastes" ~ "Hazardous wastes",
+      
+      # Missing categories that can be inferred from their Type
+      is.na(Category) &
+        Type == "Other soil/sludges (other N)" ~
+        "Hazardous wastes",
+      
+      is.na(Category) &
+        Type == "Paints, resins, inks, organic sludges (F)" ~
+        "Hazardous wastes",
+      
+      # Keep all otherwise valid values unchanged
+      TRUE ~ Category
+    )
+  )
+
+# Removing the entry where Category is Space Debris
+wastes_clean <- wastes_clean %>%
+  filter(
+    !(Category == "Space debris" &
+        is.na(Case_ID) &
+        is.na(Year_State_ID))
+  )
+```
+
+### 1d. Calculate the number of unique Categories
+
+```{r}
+# Showing all unique Categories
+wastes_clean %>%
+  distinct(Category) %>%
+  arrange(Category)
+```
+
+```{r}
+# Showing number of unique Categories
+wastes_clean %>%
+  summarise(
+    unique_categories =
+      n_distinct(Category, na.rm = TRUE)
+  )
+```
+
+### Q1 Answer and Justification
+
+Initial inspection found 21 distinct values in the raw Category column including NA. However, several values represented inconsistent naming or apparent data-entry errors rather than genuinely different waste categories. For example, organics and Organics, Plastic and Plastics, and the two forms of building and demolition materials referred to the same categories. Other suspicious values were checked against their corresponding Type. Aluminium was reassigned to Metals, which is supported both by other observations and by the specification, which describes Aluminium as a Type within the Metals category. Similarly, Recycling was reassigned to Plastics because its Type was PVC and the specification defines recycling as a Fate rather than a Category. Missing Category values were assigned to Hazardous wastes where the same Types were consistently classified as hazardous waste elsewhere in the data. One incomplete Space debris record was excluded because it had no case ID, year/state ID, stream, fate, tonnage or description and therefore could not be meaningfully used in the analysis. After these corrections, the dataset contains **11 unique waste Categories**.
+
+## Q2
+
+**How many negative feedback comments are in the 'Description' column with an
+environmental impact score of 2 or 3 (4 marks)?**
+
+Q2a.

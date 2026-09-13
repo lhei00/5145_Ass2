@@ -188,4 +188,51 @@ Initial inspection found 21 distinct values in the raw Category column including
 **How many negative feedback comments are in the 'Description' column with an
 environmental impact score of 2 or 3 (4 marks)?**
 
-Q2a.
+From initial inspection of the raw dataset and data cleaning in Q1, we know that there is 1 NA entry in the Description column in the raw dataset, which is associated with the entry with Category "Space Debris". It was already removed back in Q1, therefore we can conclude that there is no more NA entry in the Description column.
+
+### 2a. Inspection of Description structure
+
+```{r}
+# Extracting 10 rows to inspect the entry structure
+wastes_clean %>%
+  select(Description) %>%
+  slice_head(n = 10)
+```
+
+### 2b. Extracting Environmental Impact Score
+
+```{r}
+q2_data <- wastes_clean %>%
+  mutate(
+    Impact_Score = as.numeric(
+      str_extract(
+        Description,
+        "(?<=Environmental Impact Score: )[0-9]+"
+      )
+    )
+  )
+
+q2_data
+```
+
+### 2c. Extracting negative feedback comments
+
+```{r}
+# Showing number of rows in each of the impact score of 2,3
+q2_data %>%
+  filter(Impact_Score %in% c(2, 3)) %>%
+  count(Impact_Score)
+```
+
+```{r}
+# Calculating total number of negative feedback comments
+q2_data %>%
+  filter(Impact_Score %in% c(2, 3)) %>%
+  summarise(
+    negative_feedback_comments = n()
+  )
+```
+
+### Q2 Answer and Justification
+
+Since the only missing Description record had already been removed during the earlier cleaning stage in Q1, no additional missing-value treatment was required. The environmental impact score was extracted from the text in Description, then records with scores of 2 or 3 were filtered and counted. There are a total of **6312 negative feedback comments** in the Description column with an environmental impact score of 2 or 3.

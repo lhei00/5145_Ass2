@@ -181,19 +181,18 @@ wastes_clean %>%
 
 ### Q1 Answer and Justification
 
-Initial inspection found 21 distinct values in the raw Category column including NA. However, several values represented inconsistent naming or apparent data-entry errors rather than genuinely different waste categories. For example, organics and Organics, Plastic and Plastics, and the two forms of building and demolition materials referred to the same categories. Other suspicious values were checked against their corresponding Type. Aluminium was reassigned to Metals, which is supported both by other observations and by the specification, which describes Aluminium as a Type within the Metals category. Similarly, Recycling was reassigned to Plastics because its Type was PVC and the specification defines recycling as a Fate rather than a Category. Missing Category values were assigned to Hazardous wastes where the same Types were consistently classified as hazardous waste elsewhere in the data. One incomplete Space debris record was excluded because it had no case ID, year/state ID, stream, fate, tonnage or description and therefore could not be meaningfully used in the analysis. After these corrections, the dataset contains **11 unique waste Categories**.
+Initial inspection found 21 distinct values in the raw Category column including NA. However, several values represented inconsistent naming or apparent data-entry errors rather than genuinely different waste categories. For example, organics and Organics, Plastic and Plastics, and the two forms of building and demolition materials referred to the same categories. Other suspicious values were checked against their corresponding Type. I have decided to impute them from other types instead of removing them from the dataset. Aluminium was reassigned to Metals, which is supported both by other observations and by the specification, which describes Aluminium as a Type within the Metals category. Similarly, Recycling was reassigned to Plastics because its Type was PVC and the specification defines recycling as a Fate rather than a Category. Missing Category values were assigned to Hazardous wastes where the same Types were consistently classified as hazardous waste elsewhere in the data. One incomplete Space debris record was excluded because it has more than 2 missing variables, with no case ID, year/state ID, stream, fate, tonnage or description and therefore could not be meaningfully used in the analysis. After these corrections, the dataset contains **11 unique waste Categories**.
 
 ## Q2
 
-**How many negative feedback comments are in the 'Description' column with an
-environmental impact score of 2 or 3 (4 marks)?**
+**How many negative feedback comments are in the 'Description' column with an environmental impact score of 2 or 3 (4 marks)?**
 
-From initial inspection of the raw dataset and data cleaning in Q1, we know that there is 1 NA entry in the Description column in the raw dataset, which is associated with the entry with Category "Space Debris". It was already removed back in Q1, therefore we can conclude that there is no more NA entry in the Description column.
+From initial inspection of the raw dataset and data cleaning in Q1, it was found that there is 1 NA entry in the Description column in the raw dataset, which is associated with the entry with Category "Space Debris". It was already removed back in Q1, therefore we can conclude that there is no more NA entry in the Description column.
 
 ### 2a. Inspection of Description structure
 
 ```{r}
-# Extracting 10 rows to inspect the entry structure
+# Extracting 10 rows to inspect the Description structure
 wastes_clean %>%
   select(Description) %>%
   slice_head(n = 10)
@@ -236,3 +235,113 @@ q2_data %>%
 ### Q2 Answer and Justification
 
 Since the only missing Description record had already been removed during the earlier cleaning stage in Q1, no additional missing-value treatment was required. The environmental impact score was extracted from the text in Description, then records with scores of 2 or 3 were filtered and counted. There are a total of **6312 negative feedback comments** in the Description column with an environmental impact score of 2 or 3.
+
+## Q3
+
+**For each Category value, write code to calculate the fractions of waste tonnes of different
+waste sources, and then draw a chart to visualise the fraction numbers specific to the Category
+value (4 marks).**
+
+### 3a. Data inspection and cleaning
+
+From the initial inspection of the dataset, it was found that there were 15 missing Tonnes values
+
+```{r}
+# Calculating total missing Tonnes values and their contribution to the entire dataset
+wastes_clean %>%
+  summarise(
+    missing_tonnes = sum(is.na(Tonnes)),
+    missing_pct = mean(is.na(Tonnes)) * 100
+  )
+```
+
+From the initial inspection of the dataset, it was found that there was 1 missing Stream value, which was removed back in Q1. Therefore, no further NA checking has to be done.
+
+```{r}
+# Inspecting the Stream variable
+wastes_clean %>%
+  count(Stream)
+```
+
+```{r}
+# Removing the entries with missing Tonnes and cleaning up the inconsistent Stream entries
+wastes_clean <- wastes_clean %>%
+  mutate(
+    Stream = case_when(
+      Stream == "Municipal solid waste" ~ "MSW",
+      Stream == "Construction and demolition waste" ~ "C&D",
+      TRUE ~ Stream
+    )
+  ) %>%
+  filter(!is.na(Tonnes))
+```
+
+### 3b. Calculating Waste Tonnes Fractions
+
+```{r}
+# Calculate total tonnes and fractions by Category and Stream
+q3_summary <- wastes_clean %>%
+  group_by(Category, Stream) %>%
+  summarise(
+    Total_Tonnes = sum(Tonnes),
+    .groups = "drop"
+  ) %>%
+  group_by(Category) %>%
+  mutate(
+    Fraction = Total_Tonnes / sum(Total_Tonnes)
+  ) %>%
+  ungroup() %>%
+  mutate(
+    Category = factor(
+      Category,
+      levels = sort(unique(Category))
+    )
+  )
+
+# Display the calculated fractions
+q3_summary
+```
+
+```{r}
+# Check fractions sum to 1 within every Category
+q3_summary %>%
+  group_by(Category) %>%
+  summarise(
+    Total_Fraction = sum(Fraction)
+  )
+```
+
+### 3c. Visualising the fractions 
+
+```{r}
+# Visualise the fractions
+ggplot(
+  q3_summary,
+  aes(
+    x = Category,
+    y = Fraction,
+    fill = Stream
+  )
+) +
+  geom_col() +
+  coord_flip() +
+  scale_y_continuous(
+    labels = scales::percent_format(),
+    limits = c(0, 1)
+  ) +
+  labs(
+    title = "Fraction of Waste Tonnes by Source for Each Category",
+    x = "Waste Category",
+    y = "Fraction of Total Waste Tonnes",
+    fill = "Waste Source"
+  ) +
+  theme_minimal()
+```
+
+### Q3 Answer and Justification
+
+Before calculating the fractions, the Tonnes variable was checked for missing values. Fifteen observations had missing tonnage values, representing approximately 0.04% of the dataset. Since only a very small fraction of cases was affected, these observations were removed rather than imputed.
+
+The Stream variable was standardised before analysis because the dataset contained duplicate labels for the same waste source, such as Municipal solid waste and MSW, and Construction and demolition waste and C&D. Since the specification defines only three stream categories, MSW, C&I, and C&D, these duplicate labels were recoded into the standard forms. This prevents the same waste source from being treated as separate groups when calculating fractions.
+
+Total tonnes were then calculated for each combination of Category and Stream, and each stream total was divided by the total tonnes within its Category to obtain the fraction. A 100% stacked bar chart was selected because both Category and Stream are categorical variables and the values being visualised are proportions that sum to 100% within each Category. This allows the composition of waste sources to be compared directly across waste categories.

@@ -235,6 +235,14 @@ q2_data %>%
 ```
 
 ```{r}
+# Roughly looking at the comment description for impact score of 2,3
+q2_data %>%
+  filter(Impact_Score %in% c(2, 3)) %>%
+  select(Description) %>%
+  slice_head(n = 20)
+```
+
+```{r}
 # Calculating total number of negative feedback comments
 q2_data %>%
   filter(Impact_Score %in% c(2, 3)) %>%
@@ -245,7 +253,7 @@ q2_data %>%
 
 ### Q2 Answer and Justification
 
-Since the only missing Description record had already been removed during the earlier cleaning stage in Q1, no additional missing-value treatment was required. The environmental impact score was extracted from the text in Description, then records with scores of 2 or 3 were filtered and counted. There are a total of **6312 negative feedback comments** in the Description column with an environmental impact score of 2 or 3.
+Since the only missing Description record had already been removed during the earlier cleaning stage in Q1, no additional missing-value treatment was required. The environmental impact score was extracted from the text in Description, then records with scores of 2 or 3 were filtered and counted. The description of comments with impact score of 2,3 were also inspected. The rough inspection found that all the filtered descriptions are negative comments, which suggests that all comments with impact score of 2,3 are negative comments as it is a low impact score which negatively affects the environment as stated in the specifications. Thus, there are a total of **6312 negative feedback comments** in the Description column with an environmental impact score of 2 or 3.
 
 ## Q3
 
@@ -532,7 +540,7 @@ for each state. To draw the chart, please convert the Year-Year formats of all Y
 Year formats (4 marks) (Note: Use the dataset with the converted year format for all
 subsequent questions.)**
 
-Back in Q3 and Q4, data inspection and cleaning was already done for both the Tonnes column and the Year column. Therefore, no further cleaning was needed for this question.
+Back in Q3 and Q4, data inspection and cleaning was already done for both the Tonnes column and the Year column. Therefore, only the Type column is left unchecked.
 
 ### 5a. Converting Year Format
 
@@ -594,3 +602,131 @@ ggplot(q5_data,
 ### Q5 Answer and Justification
 
 At the start, no cleaning or inspection was needed for Tonnes and Year values as it was already done in previous questions. The financial-year values were converted from Year-Year format to a single starting year to show a yearly trend and ensure that the converted dataset can be used for subsequent questions. The Type column was inspected before filtering to ensure that "Food organics" was consistently recorded throughout the dataset. The data were then filtered to Type == "Food organics", grouped by Year and State, and total Tonnes were summed for each group. A line chart was used because the objective is to compare how food-organics waste changes over time across states.
+
+## Q6
+
+**Write code to display the most recycled waste Type and the most energy-recovered waste Type
+with the corresponding year. Write code to display the most increased waste Type over years
+(5 marks).**
+
+For this question, the only column left unchecked and not cleaned is the Fate variable.
+
+### 6a. Inspecting and cleaning Fate column
+
+```{r}
+wastes_joined %>%
+  count(Fate, sort = TRUE)
+```
+
+Inspection of the Fate column shows that all Fates are distinct and there are no suspicious Fates which should be represented differently. Therefore, no cleaning is needed.
+
+### 6b. Most recycled waste Type
+
+```{r}
+# Calculating the most recycled waste Type and its corresponding Year
+most_recycled <- wastes_joined %>%
+  filter(Fate == "Recycling") %>%
+  group_by(Type, Year) %>%
+  summarise(
+    Total_Tonnes = sum(Tonnes, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  slice_max(
+    order_by = Total_Tonnes,
+    n = 1,
+    with_ties = FALSE
+  )
+
+most_recycled
+```
+
+### 6c. Most energy-recovered waste Type
+
+```{r}
+# Calculating the most energy-recovered waste Type and its corresponding Year
+most_energy_recovered <- wastes_joined %>%
+  filter(Fate == "Energy recovery") %>%
+  group_by(Type, Year) %>%
+  summarise(
+    Total_Tonnes = sum(Tonnes, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  slice_max(
+    order_by = Total_Tonnes,
+    n = 1,
+    with_ties = FALSE
+  )
+
+most_energy_recovered
+```
+
+### 6d. Most increased waste Type over years
+
+Increase =Total tonnes at end of period − Total tonnes at start of period
+
+= Total tonnes at 2020 - Total tonnes at 2006
+
+Before proceeding with the calculations, it is important to first identify if all the existing Types has data in both the start and end period. The analysis would be incorrect if Types with missing data at one or both ends are included, as they would provide an incorrect waste growth throughout the years, such as missing start year data having 0 as its Tonne value, thus providing a substantially large growth if used to calculate the increase over years.
+
+```{r}
+# Determining if every Type appears at both ends of the years
+type_check <- wastes_joined %>%
+  filter(Year %in% c(2006, 2020)) %>%
+  distinct(Type, Year) %>%
+  count(Type, name = "Years_Available")
+
+type_check %>%
+  count(Years_Available)
+```
+
+The Years_Available shows how many years of data are available for each Type. As observed, there are 5 Types with data available in only one end of the years, thus must be excluded from the final calculations to avoid computing false and misleading waste increase.
+
+```{r}
+# Filtering out valid types for checking
+valid_types <- type_check %>%
+  filter(Years_Available == 2) %>%
+  pull(Type)
+
+valid_types
+```
+
+```{r}
+# Calculating Increase in waste of all Types
+type_increase <- wastes_joined %>%
+  filter(
+    Type %in% valid_types,
+    Year %in% c(2006, 2020)
+  ) %>%
+  group_by(Type, Year) %>%
+  summarise(
+    Total_Tonnes = sum(Tonnes, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  group_by(Type) %>%
+  summarise(
+    Start_Tonnes = Total_Tonnes[Year == start_year],
+    End_Tonnes = Total_Tonnes[Year == end_year],
+    Increase = End_Tonnes - Start_Tonnes,
+    .groups = "drop"
+  )
+
+type_increase
+```
+
+```{r}
+# Computing the Type with most increased waste over the years
+most_increased <- type_increase %>%
+  slice_max(Increase, n = 1, with_ties = FALSE)
+
+most_increased
+```
+
+### Q6 Answer and Justification
+
+The Fate column was first inspected to confirm the exact categories used for recycling and energy recovery and to check for missing or inconsistent values. Total tonnes were then aggregated by Type and Year because multiple records can contribute to the same waste Type within a year. The most recycled and most energy-recovered waste Types were identified by selecting the Type–Year combination with the highest total tonnes for the corresponding Fate. For the “most increased” waste Type, the analysis compared total tonnes at the beginning and end of the cleaned study period rather than using year-to-year changes. Before calculating this change, an endpoint availability check was performed. Of the waste Types, 46 appeared in both the start and end years, while 5 appeared at only one endpoint. The incomplete Types were excluded to avoid computing incorrect waste growth. The Type with the largest positive difference between end-period and start-period total tonnes was therefore identified as the most increased waste Type over the full period.
+
+The most **recycled** waste Type is **Bricks, concrete and pavers**, in year **2020** with a total Tonnes of **10478681**.
+
+The most **energy-recovered** waste Type is **Food organics**, in year **2015** with a total Tonnes of **1140998**.
+
+The **most increased** waste Type over years is **Bricks, concrete and pavers**, with a total increase of **8345529** tonnes over the observed years.

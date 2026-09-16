@@ -388,9 +388,9 @@ Mean) of the total waste tonnes for each state in ‘temp’ (Note: You may use 
 functions/commands to prepare the pre-processed data table, but when you compute and
 display the statistical information, you need to use a single R function.) (4 marks).**
 
-### 4a. Inspecting year_state dataset
+### 4a. Inspecting and cleaning year_state dataset
 
-From the initial inspection of the dataset, it was found that there were no NA values for all columns in year_state.
+From the initial inspection of the dataset, it was found that there were no NA values for all columns in year_state. Therefore, no additional checks for NAs were needed.
 
 ```{r}
 # Inspect all State values and their frequencies
@@ -398,7 +398,17 @@ year_state %>%
   count(State, sort = TRUE)
 ```
 
-No duplicate states with inconsistent format are present.
+No duplicate states with inconsistent format are present. However, Australia is not a state but a country. The specification mentions that the State column is the state or territory in which the waste was generated.
+
+```{r}
+# Looking at Australia related data
+aus_data <- year_state %>%
+  filter(State == "Australia")
+
+aus_data
+```
+
+The entries related to "Australia" as the state was also lacking, contributing only to 2 distinct year ranges.
 
 ```{r}
 # Determining if there are duplicate ID values
@@ -414,7 +424,7 @@ year_state %>%
   count(Year, sort = TRUE)
 ```
 
-All Year values are formatted consistently.
+All Year values are formatted consistently. However, the specification mentions that Year is the financial year for each year between 2006-2007 and 2020-2021. It was found that there are years exceeding the given range.
 
 ```{r}
 # Check if all Year_State_ID from wastes match to an existing ID in year_state
@@ -428,13 +438,37 @@ wastes_clean %>%
 
 All Year_State_ID in wastes has an existing match to an ID in year_state.
 
+**Data Cleaning**
+
+```{r}
+# Removing invalid Year ranges from year_state
+year_state_clean <- year_state %>%
+  separate(Year, into = c("start_year", "end_year"),
+           sep = "-", remove = FALSE) %>%
+  mutate(
+    start_year = as.numeric(start_year),
+    end_year = as.numeric(end_year)
+  ) %>%
+  filter(end_year - start_year == 1, 
+         start_year >= 2006)
+
+# Verifying cleaned Year ranges
+year_state_clean %>%
+  count(Year, sort = TRUE)
+```
+
+```{r}
+# Removing entries with State as "Australia"
+
+```
+
 ### 4b. Joining the datasets
 
 ```{r}
 # Joining the datasets
 wastes_joined <- wastes_clean %>%
   left_join(
-    year_state,
+    year_state_clean,
     by = c("Year_State_ID" = "ID")
   )
 ```
@@ -487,4 +521,76 @@ summary(temp)
 
 ### Q4 Answer and Justification
 
-The Year_State_ID dataset was first inspected to determine if any cleaning is needed, in which no additional cleaning was required. Wastes.csv and Year_State_ID.csv were then combined using a left join, matching Year_State_ID in the waste data with ID in the year-state data. A left join was used because Wastes.csv is the main dataset and the objective is to add the corresponding Year and State values from Year_State_ID.csv while retaining all waste observations. Year_State_ID in Wastes.csv acts as the foreign key, while ID in Year_State_ID.csv is the primary key. The joined data were grouped by Year and State to calculate total waste tonnes and stored as temp. Finally, summary() was used as the single R function to display the minimum, mean, and maximum total waste tonnes for each state.
+The Year_State_ID dataset was first inspected to determine if any cleaning is needed. The national-level observations labelled “Australia” were excluded because the analysis requires comparisons across individual states and territories. Additionally, year ranges spanning more than one financial year and years out of range were also removed as inconsistent temporal observations as the specifications state so.
+
+Wastes.csv and Year_State_ID.csv were then combined using a left join, matching Year_State_ID in the waste data with ID in the year-state data. A left join was used because Wastes.csv is the main dataset and the objective is to add the corresponding Year and State values from Year_State_ID.csv while retaining all waste observations. Year_State_ID in Wastes.csv acts as the foreign key, while ID in Year_State_ID.csv is the primary key. The joined data were grouped by Year and State to calculate total waste tonnes and stored as temp. Finally, summary() was used as the single R function to display the minimum, mean, and maximum total waste tonnes for each state.
+
+## Q5
+
+**A manager wants to see a chart showing a yearly trend of total waste tonnes of food organics
+for each state. To draw the chart, please convert the Year-Year formats of all Year values into
+Year formats (4 marks) (Note: Use the dataset with the converted year format for all
+subsequent questions.)**
+
+Back in Q3 and Q4, data inspection and cleaning was already done for both the Tonnes column and the Year column. Therefore, no further cleaning was needed for this question.
+
+### 5a. Converting Year Format
+
+```{r}
+# Converting Year column format (Year-Year to Year)
+wastes_joined <- wastes_joined %>%
+  mutate(Year = as.numeric(substr(Year, 1, 4)))
+
+# Inspecting Year column after conversion
+wastes_joined %>%
+  count(Year, sort = FALSE)
+```
+
+### 5b. Inspecting and cleaning Type values
+
+```{r}
+# Look at distinct Type values
+wastes_joined %>%
+  count(Type, sort = FALSE)
+```
+
+After inspecting the Type values, it was found that all Types are distinct and there are no suspicious Types which should be represented differently. It was also found back in initial inspection of dataset that there is no NA values under Type. Therefore, no cleaning is needed.
+
+### 5c. Filtering for Food Organics
+
+```{r}
+# Filter out total tonnes of each state and year for food organics
+q5_data <- wastes_joined %>%
+  filter(Type == "Food organics") %>%
+  group_by(Year, State) %>%
+  summarise(
+    Total_Tonnes = sum(Tonnes, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+q5_data
+```
+
+### 5d. Plotting yearly trend of food organics
+
+```{r}
+# Plotting line graph to show trends of food organics wastes of each state over the years
+ggplot(q5_data,
+       aes(x = Year,
+           y = Total_Tonnes,
+           colour = State,
+           group = State)) +
+  geom_line() +
+  geom_point() +
+  labs(
+    title = "Yearly Trend of Total Food Organics Waste by State",
+    x = "Year",
+    y = "Total Waste Tonnes",
+    colour = "State"
+  ) +
+  theme_minimal()
+```
+
+### Q5 Answer and Justification
+
+At the start, no cleaning or inspection was needed for Tonnes and Year values as it was already done in previous questions. The financial-year values were converted from Year-Year format to a single starting year to show a yearly trend and ensure that the converted dataset can be used for subsequent questions. The Type column was inspected before filtering to ensure that "Food organics" was consistently recorded throughout the dataset. The data were then filtered to Type == "Food organics", grouped by Year and State, and total Tonnes were summed for each group. A line chart was used because the objective is to compare how food-organics waste changes over time across states.

@@ -1103,3 +1103,122 @@ relevant plot to support the manager's decision. Justify your choice, and explai
 tells her. (5 marks)**
 
 ### 8a. Extracting Tyre Disposals
+
+The Type and Tonnes have already been inspected and cleaned in previous questions, therefore no further cleaning is needed.
+
+```{r}
+# Filter out tyre disposal records
+tyre_disposal <- wastes_joined %>%
+  filter(
+    Type == "Tyres (T140)",
+    Fate == "Disposal"
+  )
+
+# Check for 0 tonne records
+tyre_disposal %>%
+  summarise(
+    Total_Records = n(),
+    Zero_Tonnes = sum(Tonnes == 0),
+    Positive_Tonnes = sum(Tonnes > 0)
+  )
+```
+
+To extract the actual tyre disposals that have occured, records with 0 tonnes need to be excluded from the analysis as they do not count as an actual tyre disposal.
+
+```{r}
+# Filtering out valid tyre disposal records
+tyre_disposal <- tyre_disposal %>%
+  filter(Tonnes > 0)
+```
+
+### 8b. Deciding Tonnes ranges
+
+```{r}
+# Inspecting Tonnes distribution
+summary(tyre_disposal$Tonnes)
+```
+
+As observed from the statistical information of the valid tyre disposal tonne values, we can see that the value ranges from 86 to 70411, while the median is 6211. From this, we can conclude that half of the values are in the lower range, less than 6211. Therefore, a valid Tonne range would be to allocate a smaller range for the smaller values, and gradually growing the range for larger values.
+
+```{r}
+# Allocating each record into a Tonne range
+tyre_disposal <- tyre_disposal %>%
+  mutate(
+    Tonnes_range = case_when(
+      Tonnes <= 1000 ~ "0-1,000",
+      Tonnes <= 5000 ~ "1,001-5,000",
+      Tonnes <= 10000 ~ "5,001-10,000",
+      Tonnes <= 50000 ~ "10,001-50,000",
+      Tonnes > 50000 ~ ">50,000"
+    )
+  )
+
+# Inspecting the Tonne distribution across the ranges
+tyre_disposal %>%
+  count(Tonnes_range)
+```
+
+### 8c. Calculating disposal frequency
+
+```{r}
+# Calculating disposal frequency by State
+tyre_frequency <- tyre_disposal %>%
+  count(
+    State,
+    Tonnes_range,
+    name = "Frequency"
+  )
+
+tyre_frequency
+```
+
+```{r}
+# Calculating disposal summary for each State
+tyre_state_summary <- tyre_disposal %>%
+  group_by(State) %>%
+  summarise(
+    Disposal_Frequency = n(), # Total disposal frequency
+    Total_Tonnes = sum(Tonnes), # Total tonnes disposed
+    Mean_Tonnes = mean(Tonnes),
+    Max_Tonnes = max(Tonnes),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(Total_Tonnes))
+
+tyre_state_summary
+```
+
+### 8d. Visualising the Statistics
+
+A stacked bar chart was selected because the manager needs to compare both tyre disposal frequency and disposal-size variation across states. The total height of each bar represents the number of actual disposal events in each state, while the stacked segments show how those events are distributed across different Tonnes_range categories. This allows states with frequent disposal and a greater concentration of large disposal events to be identified at the same time.
+
+```{r}
+# Visualising the disposal size of each State
+ggplot(
+  tyre_frequency,
+  aes(
+    x = reorder(State, Frequency, FUN = sum),
+    y = Frequency,
+    fill = Tonnes_range
+  )
+) +
+  geom_col(position = "stack") +
+  coord_flip() +
+  labs(
+    title = "Tyre Disposal Frequency and Size Variation by State",
+    x = "State",
+    y = "Number of Disposal Events",
+    fill = "Disposal Size (Tonnes)"
+  ) +
+  theme_minimal()
+```
+
+The plot shows that tyre disposal frequency is identical across all states, with 19 positive-tonnage disposal events each. Therefore, frequency does not differentiate the states for investment purposes. Instead, the important variation is the size of the disposal events, shown by the distribution of the Tonne range segments. New South Wales, Queensland, Victoria and Western Australia have substantially larger disposal quantities, whereas South Australia, Tasmania, Northern Territory and ACT generally have much smaller disposal sizes. This indicates that the manager should focus more on the size distribution of disposal events rather than their frequency when considering where large-scale processing capacity may be required.
+
+### Q8 Answer and Justification
+
+Tyre disposal frequency is constant across all eight states, with 19 positive-tonnage disposal records per state. Therefore, frequency alone does not provide an insight for choosing where to invest in processing capacity. The key difference is instead the size of the disposal events. NSW records the largest total tyre disposal volume at approximately 909422 tonnes, with an average of 47864 tonnes per event and a maximum of 70411 tonnes. Qld follows with approximately 783599 tonnes in total and an average of 41242 tonnes, while Vic and WA also record relatively high average disposal sizes of approximately 33340 and 31474 tonnes, respectively. In contrast, SA, Tas, NT and ACT have substantially smaller average disposal quantities.
+
+Since disposal frequency is constant across states, the stronger evidence for large-scale processing demand comes from disposal size. **NSW shows the greatest potential demand for large-scale tyre processing capacity**, as it has the highest total disposal volume, highest average disposal size and largest single disposal event. Queensland is the next strongest candidate, followed by Victoria and Western Australia. The lower average and maximum disposal quantities in South Australia, Tasmania, Northern Territory and Australia Capital Territory suggest less need for very large processing capacity based on this dataset.
+
+Additionally, across all states, 71 of the 152 disposal events fall above 10,000 tonnes (42 in the 10,001–50,000 range and 29 above 50,000 tonnes). This indicates that large disposal events are quite common overall, which suggests the demand for large-scale processing capacity.

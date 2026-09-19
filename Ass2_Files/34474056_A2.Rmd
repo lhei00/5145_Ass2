@@ -2,17 +2,34 @@
 title: "34474056_A2"
 author: "Chan Long Hei"
 date: "2026-09-6"
-output: html_document
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
 ---
 
 # FIT5145 Assignment 2
+
+## Generative AI Declaration
+
+**Type of GenAI used**: ChatGPT
+
+**Use of GenAI**:
+
+\- Literature exploration support
+
+\- Methodology selection support
+
+\- Writing structure and clarity improvement.
+
+\- Grammar check and improvement
 
 ## Loading Libraries and Datasets
 
 ```{r}
 library(tidyverse)
-library(stringr)
-library(scales)
+library(readxl)
 
 # Read files
 wastes <- read_csv("Wastes.csv")
@@ -253,7 +270,7 @@ q2_data %>%
 
 ### Q2 Answer and Justification
 
-Since the only missing Description record had already been removed during the earlier cleaning stage in Q1, no additional missing-value treatment was required. The environmental impact score was extracted from the text in Description, then records with scores of 2 or 3 were filtered and counted. The description of comments with impact score of 2,3 were also inspected. The rough inspection found that all the filtered descriptions are negative comments, which suggests that all comments with impact score of 2,3 are negative comments as it is a low impact score which negatively affects the environment as stated in the specifications. Thus, there are a total of **6312 negative feedback comments** in the Description column with an environmental impact score of 2 or 3.
+Since the only missing Description record had already been removed during the earlier cleaning stage in Q1, no additional missing-value treatment was required. The environmental impact score was extracted from the text in Description, then records with scores of 2 or 3 were filtered and counted. The description of comments with impact score of 2,3 were also inspected. The rough inspection found that all the filtered descriptions are negative comments, which strengthens the idea that comments with impact score of 2,3 are negative comments as it is a low impact score which negatively affects the environment as stated in the specifications. Therefore, records with environmental impact scores of 2 or 3 were filtered as the negative-feedback group. A total of 6,312 records met this condition. Thus, there are a total of **6312 negative feedback comments** in the Description column with an environmental impact score of 2 or 3.
 
 ## Q3
 
@@ -363,8 +380,7 @@ ggplot(
   geom_col() +
   coord_flip() +
   scale_y_continuous(
-    labels = scales::percent_format(),
-    limits = c(0, 1)
+    labels = scales::percent_format()
   ) +
   labs(
     title = "Fraction of Waste Tonnes by Source for Each Category",
@@ -477,8 +493,13 @@ wastes_joined <- wastes_clean %>%
     by = c("Year_State_ID" = "ID")
   )
 
-# Removing any NA rows for wastes_joined
-wastes_joined <- na.omit(wastes_joined)
+# Removing any NA joined rows for wastes_joined
+wastes_joined <- wastes_joined %>%
+  filter(
+    !is.na(Year),
+    !is.na(State),
+    !is.na(Economic_Growth)
+  )
 ```
 
 ```{r}
@@ -525,7 +546,7 @@ summary(temp)
 
 The Year_State_ID dataset was first inspected to determine if any cleaning is needed. The national-level observations labelled “Australia” were excluded because the analysis requires comparisons across individual states and territories. Additionally, year ranges spanning more than one financial year and years out of range were also removed as inconsistent temporal observations as the specifications state so.
 
-Wastes.csv and Year_State_ID.csv were then combined using a left join, matching Year_State_ID in the waste data with ID in the year-state data. A left join was used because Wastes.csv is the main dataset and the objective is to add the corresponding Year and State values from Year_State_ID.csv while retaining all waste observations. Year_State_ID in Wastes.csv acts as the foreign key, while ID in Year_State_ID.csv is the primary key. The joined data were grouped by Year and State to calculate total waste tonnes and stored as temp. Finally, summary() was used as the single R function to display the minimum, mean, and maximum total waste tonnes for each state.
+Wastes.csv and Year_State_ID.csv were then combined using a left join, matching Year_State_ID in the waste data with ID in the year-state data. A left join was used so unmatched waste records could first be retained and identified, after which records without valid Year-State information were removed. Year_State_ID in Wastes.csv acts as the foreign key, while ID in Year_State_ID.csv is the primary key. The joined data were grouped by Year and State to calculate total waste tonnes and stored as temp. Finally, summary() was used as the single R function to display the minimum, mean, and maximum total waste tonnes for each state.
 
 ## Q5
 
@@ -589,6 +610,8 @@ ggplot(q5_data,
   ) +
   theme_minimal()
 ```
+
+The chart shows substantial differences in food-organics waste across states. NSW records the highest quantities across the observed period and fluctuates around 1.3-1.7 million tonnes, while Victoria is generally the second highest but shows a gradual decline. Queensland remains comparatively stable with a slight upward tendency, whereas the smaller states contribute much lower quantities.
 
 ### Q5 Answer and Justification
 
@@ -754,7 +777,7 @@ The extracted environmental impact scores contained no missing values and all ob
 
 ### 7b. Investigating Factors Affecting Impact Score
 
-For this analysis, the chosen factors to investigate are as such: Fate, Stream, Category, Tonnes, Core_Non-score, Year, State, Economic_Growth. The factors were chosen because they represent different dimensions that may be associated with environmental impact scores. Fate captures how waste is ultimately managed, while Stream and Category describe the source and broad type of waste. Tonnes represents the scale of the waste process. Core_Non-core distinguishes core waste from mining, agriculture and such non-core waste, which provides another meaningful structural classification. State captures possible geographic differences in waste-management practices, while Year captures possible impact score changes through time. Economic_Growth allows broader economic conditions to be considered. Together, these variables provide a broad investigation using information from both datasets.
+For this analysis, the chosen factors to investigate are as such: Fate, Stream, Category, Tonnes, Core_Non-core, Year, State, Economic_Growth. The factors were chosen because they represent different dimensions that may be associated with environmental impact scores. Fate captures how waste is ultimately managed, while Stream and Category describe the source and broad type of waste. Tonnes represents the scale of the waste process. Core_Non-core distinguishes core waste from mining, agriculture and such non-core waste, which provides another meaningful structural classification. State captures possible geographic differences in waste-management practices, while Year captures possible impact score changes through time. Economic_Growth allows broader economic conditions to be considered. Together, these variables provide a broad investigation using information from both datasets.
 
 #### 7b(i) Check all variables used
 
@@ -1089,7 +1112,7 @@ Year has a positive and statistically significant coefficient of approximately 0
 
 **Core_Non-core**
 
-The regression output shows NA for Core_Non-score and R mentions that '1 not defined because of singularities'. Core_Non-core could not be independently estimated in the multiple regression because the model identified a singularity, which indicates a perfect collinearity with another included predictor. Therefore, although Core/Non-core was useful for descriptive comparison, its independent effect cannot be separated from the other variables in this model.
+The regression output shows NA for Core_Non-core and R mentions that '1 not defined because of singularities'. Core_Non-core could not be independently estimated in the multiple regression because the model identified a singularity, which indicates a perfect collinearity with another included predictor. Therefore, although Core/Non-core was useful for descriptive comparison, its independent effect cannot be separated from the other variables in this model.
 
 ### Q7 Answer and Justification
 
@@ -1097,10 +1120,7 @@ Overall, the analysis indicates that environmental impact scores are associated 
 
 ## Q8
 
-**A manager is deciding where to invest in large-scale tyre processing capacity, and she wants
-to understand the disposal size variation and disposal frequency for each state. Create a
-relevant plot to support the manager's decision. Justify your choice, and explain what the plot
-tells her. (5 marks)**
+**A manager is deciding where to invest in large-scale tyre processing capacity, and she wants to understand the disposal size variation and disposal frequency for each state. Create a relevant plot to support the manager's decision. Justify your choice, and explain what the plot tells her. (5 marks)**
 
 ### 8a. Extracting Tyre Disposals
 
@@ -1219,6 +1239,560 @@ The plot shows that tyre disposal frequency is identical across all states, with
 
 Tyre disposal frequency is constant across all eight states, with 19 positive-tonnage disposal records per state. Therefore, frequency alone does not provide an insight for choosing where to invest in processing capacity. The key difference is instead the size of the disposal events. NSW records the largest total tyre disposal volume at approximately 909422 tonnes, with an average of 47864 tonnes per event and a maximum of 70411 tonnes. Qld follows with approximately 783599 tonnes in total and an average of 41242 tonnes, while Vic and WA also record relatively high average disposal sizes of approximately 33340 and 31474 tonnes, respectively. In contrast, SA, Tas, NT and ACT have substantially smaller average disposal quantities.
 
-Since disposal frequency is constant across states, the stronger evidence for large-scale processing demand comes from disposal size. **NSW shows the greatest potential demand for large-scale tyre processing capacity**, as it has the highest total disposal volume, highest average disposal size and largest single disposal event. Queensland is the next strongest candidate, followed by Victoria and Western Australia. The lower average and maximum disposal quantities in South Australia, Tasmania, Northern Territory and Australia Capital Territory suggest less need for very large processing capacity based on this dataset.
+Since disposal frequency is constant across states, the stronger evidence for large-scale processing demand comes from disposal size. **NSW shows the greatest potential demand for large-scale tyre processing capacity**, as it has the highest total disposal volume, highest average disposal size and largest single disposal event. Queensland is the next strongest candidate, followed by Victoria and Western Australia. The lower average and maximum disposal quantities in South Australia, Tasmania, Northern Territory and Australian Capital Territory suggest less need for very large processing capacity based on this dataset.
 
 Additionally, across all states, 71 of the 152 disposal events fall above 10,000 tonnes (42 in the 10,001–50,000 range and 29 above 50,000 tonnes). This indicates that large disposal events are quite common overall, which suggests the demand for large-scale processing capacity.
+
+## Q9
+
+**Using both original datasets and external datasets, please investigate the factors influencing the yearly trend of total C&D waste tonnes. Marks will be awarded based on the depth and breadth of your investigation, including analyses and discussions, as well as the strength of your reasoning in drawing insights and conclusions. (Note: Please provide the source links for any external dataset used) (5 marks).**
+
+### 9a. External Datasets
+
+**1)** **Construction Work Done, Australia, Preliminary (Quarterly Report)**
+
+Source: [https://www.abs.gov.au/statistics/industry/building-and-construction/construction-work-done-australia-preliminary/latest-release](https://www.abs.gov.au/statistics/industry/building-and-construction/construction-work-done-australia-preliminary/latest-release?utm_source=chatgpt.com){.uri}
+
+(*TABLE 08. Value of Construction Work Done, Chain Volume Measures, States and Territories***)**
+
+*Renamed to Construction_Work_Done.xlsx after download*
+
+**2)** **National, state and territory population (Quarterly Report)**
+
+Source: [https://www.abs.gov.au/statistics/people/population/national-state-and-territory-population/latest-release](https://www.abs.gov.au/statistics/people/population/national-state-and-territory-population/latest-release?utm_source=chatgpt.com#key-statistics){.uri}
+
+(*Population - states and territories*)
+
+*Renamed to Population.xlsx after download*
+
+Construction Work Done was first considered because more construction activity would logically be expected to produce more C&D waste. However, this relationship is quite straightforward and a simple comparison may not provide much deeper insight. Therefore, the planned analysis also examines C&D waste generated per unit of construction activity, which helps identify whether waste generation is increasing only because construction activity is increasing, or whether the amount of waste produced relative to the level of construction is also changing. Population is also investigated because states with larger populations are likely to have greater demand for housing and infrastructure, which may contribute to higher C&D waste. Including population helps distinguish whether differences in C&D waste are mainly due to state size or whether some states generate relatively more waste than others.
+
+### 9b. Extract and Inspect Yearly Trend of C&D wastes
+
+```{r}
+# Create yearly C&D waste tonnes by state
+cd_state_year <- wastes_joined %>%
+  filter(
+    Stream == "C&D"
+  ) %>%
+  group_by(
+    Year,
+    State,
+    Economic_Growth
+  ) %>%
+  summarise(
+    CD_Tonnes = sum(Tonnes, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+cd_state_year
+```
+
+```{r}
+# Inspecting the summary statistics
+summary(cd_state_year$CD_Tonnes)
+```
+
+```{r}
+# Check whether each state has data for all 15 years
+cd_state_year %>%
+  count(State)
+```
+
+C&D waste was first grouped and extracted by state and year because the analysis investigates yearly changes in waste generation rather than individual waste records. The data were then checked to ensure that each state was represented throughout the study period, preventing missing state-year observations from being incorrectly interpreted as 0 C&D waste.
+
+### 9c. Exploring Yearly C&D Waste Trends
+
+```{r}
+cd_year <- cd_state_year %>%
+  group_by(Year) %>%
+  summarise(
+    Total_CD_Tonnes = sum(CD_Tonnes),
+    .groups = "drop"
+  )
+
+cd_year
+```
+
+```{r}
+# Plotting a line graph to visualise yearly change in C&D waste
+ggplot(
+  cd_year,
+  aes(
+    x = Year,
+    y = Total_CD_Tonnes
+  )
+) +
+  geom_line() +
+  geom_point() +
+  labs(
+    title = "Yearly Trend of Total C&D Waste Tonnes",
+    x = "Year",
+    y = "Total C&D Waste Tonnes"
+  ) +
+  theme_minimal()
+```
+
+A line graph was used because Year is an ordered temporal variable and the objective is to identify how total C&D waste changes over time. Connecting consecutive years makes changes in direction, periods of decline and sustained growth easier to identify than using isolated observations.
+
+The yearly trend is not consistent across the full period. C&D waste fluctuated considerably between 2006 and 2012, reaching particularly low levels in 2011 and 2012. From 2013 onward, however, a strong and sustained increase is visible, with total C&D waste rising from approximately 7.28 million tonnes in 2013 to 25.31 million tonnes in 2020. This represents an increase of approximately 248% over this period. Therefore, the main trend requiring explanation is the rapid growth in C&D waste after 2013 rather than a gradual increase across the entire study period.
+
+```{r}
+# Comparing C&D wastes by States
+ggplot(
+  cd_state_year,
+  aes(
+    x = Year,
+    y = CD_Tonnes,
+    colour = State,
+    group = State
+  )
+) +
+  geom_line() +
+  geom_point() +
+  labs(
+    title = "Yearly C&D Waste Tonnes by State",
+    x = "Year",
+    y = "C&D Waste Tonnes",
+    colour = "State"
+  ) +
+  theme_minimal()
+```
+
+The state-level line graph was used to determine whether the national increase in C&D waste was experienced consistently across Australia or was mainly caused by particular states. Separate lines allow both the direction and magnitude of each state's trend to be compared over time.
+
+The state-level graph shows that the national increase is not evenly distributed across states. NSW and Victoria contribute substantially to the rise after 2013, with NSW showing the largest increase and remaining the highest C&D waste generator toward the end of the period. Queensland and Western Australia also show noticeable increases in later years, while the smaller states and territories remain at much lower levels. This suggests that the national trend is partly driven by changes within several larger states rather than by a uniform increase across Australia.
+
+### 9d. Inspecting and Cleaning Construction Work Done Dataset
+
+```{r}
+# Checking the excel sheet names
+excel_sheets("Construction_Work_Done.xlsx")
+```
+
+```{r}
+# Inspecting the first few rows to see file structure
+construction_inspect <- read_xlsx(
+  "Construction_Work_Done.xlsx",
+  sheet = "Data1",
+  col_names = FALSE,
+  n_max = 20
+)
+
+construction_inspect
+```
+
+From the initial inspection, row 1-10 are all metadata, and actual data starts from row 11. The inspection also showed that the data of the total construction work done for each states are in column 20 to 27.
+
+```{r}
+# Extracting the data and skipping the metadata
+construction_raw <- read_xlsx(
+  "Construction_Work_Done.xlsx",
+  sheet = "Data1",
+  skip = 10,
+  col_names = FALSE
+)
+```
+
+```{r}
+# Extracting data for each State
+construction_raw <- construction_raw %>%
+  select(1, 20:27)
+
+names(construction_raw) <- c(
+  "Quarter",
+  "NSW",
+  "Vic",
+  "Qld",
+  "SA",
+  "WA",
+  "Tas",
+  "NT",
+  "ACT"
+)
+```
+
+```{r}
+# Roughly look at the data
+glimpse(construction_raw)
+
+head(construction_raw)
+
+tail(construction_raw)
+```
+
+The source is quarterly. We therefore need to assign each quarter to the correct financial year.
+
+```{r}
+# Convert each quarter to R date format
+construction_raw <- construction_raw %>%
+  mutate(
+    Quarter = as.Date(Quarter)
+  )
+```
+
+As the waste Year variable represents the starting year of each financial year, construction activity was aligned using the four quarters within the corresponding July–June period as Australian financial years run from July to June, so the financial year beginning in 2006 continues into June 2007. Therefore, as an example, Year = 2006 represents 2006–07, so construction work from September 2006 to June 2007 should be compiled.
+
+```{r}
+# Assigning each quarter to its financial year
+construction_quarterly <- construction_raw %>%
+  pivot_longer(
+    cols = NSW:ACT,
+    names_to = "State",
+    values_to = "Construction_Work_000"
+  ) %>%
+  mutate(
+    Calendar_Year = as.numeric(format(Quarter, "%Y")),
+    Month = as.numeric(format(Quarter, "%m")),
+    
+    Year = if_else(
+      Month %in% c(9, 12),
+      Calendar_Year,
+      Calendar_Year - 1
+    )
+  ) %>%
+  filter(
+    Year >= 2006,
+    Year <= 2020
+  )
+```
+
+```{r}
+# Check each Year to make sure there are 4 quarters
+construction_quarterly %>%
+  count(Year, State)
+```
+
+```{r}
+# Combining the quarters into whole financial years
+construction_clean <- construction_quarterly %>%
+  group_by(
+    Year,
+    State
+  ) %>%
+  summarise(
+    Construction_Work =
+      sum(Construction_Work_000, na.rm = TRUE) / 1000,
+    .groups = "drop"
+  )
+```
+
+```{r}
+# Inspect cleaned construction data
+construction_clean
+
+summary(construction_clean$Construction_Work)
+```
+
+Construction Work Done was provided quarterly, so the four quarters corresponding to each financial year were summed to match the yearly C&D waste data. Chain-volume measures were used because they represent changes in the real volume of construction activity rather than changes caused only by prices. The values were converted from \$'000 to \$ million to make subsequent waste-intensity measures easier to interpret.
+
+### 9e. Inspecting and Cleaning Population Dataset
+
+```{r}
+# Checking the excel sheet names
+excel_sheets("Population.xlsx")
+```
+
+```{r}
+# Inspecting the first few rows to see file structure
+population_inspect <- read_xlsx(
+  "Population.xlsx",
+  sheet = "Data1",
+  col_names = FALSE,
+  n_max = 20
+)
+
+population_inspect
+```
+
+From the initial inspection, row 1-10 are all metadata, and actual data starts from row 11. The inspection also showed that the data of the total population for each states are in column 20 to 27. We only need the date and the eight Persons columns, which are columns 20–27.
+
+```{r}
+# Extracting the data and excluding the metadata
+population_raw <- read_xlsx(
+  "Population.xlsx",
+  sheet = "Data1",
+  skip = 10,
+  col_names = FALSE
+)
+```
+
+```{r}
+# Extracting the data for each State
+population_raw <- population_raw %>%
+  select(1, 20:27)
+
+names(population_raw) <- c(
+  "Quarter",
+  "NSW",
+  "Vic",
+  "Qld",
+  "SA",
+  "WA",
+  "Tas",
+  "NT",
+  "ACT"
+)
+```
+
+```{r}
+# Roughly look at the data
+glimpse(population_raw)
+
+head(population_raw)
+
+tail(population_raw)
+```
+
+Similar to the Construction dataset, this Population dataset is also in quarters. For population, the total population recorded for Year 2006 will be the reported value for Year 2007. Therefore, as an example, for Year 2006, the population data used will be taken from June 2007.
+
+```{r}
+# Convert each quarter to R date format
+population_raw <- population_raw %>%
+  mutate(
+    Quarter = as.Date(Quarter)
+  )
+```
+
+```{r}
+population_clean <- population_raw %>%
+  pivot_longer(
+    cols = NSW:ACT,
+    names_to = "State",
+    values_to = "Population"
+  ) %>%
+  mutate(
+    Calendar_Year = as.numeric(format(Quarter, "%Y")),
+    Month = as.numeric(format(Quarter, "%m"))
+  ) %>%
+  filter(
+    Month == 6,
+    Calendar_Year >= 2007,
+    Calendar_Year <= 2021
+  ) %>%
+  mutate(
+    Year = Calendar_Year - 1
+  ) %>%
+  select(
+    Year,
+    State,
+    Population
+  )
+```
+
+```{r}
+# Inspect the cleaned Population data
+population_clean
+
+summary(population_clean)
+```
+
+### 9f. Joining the datasets
+
+```{r}
+# Joining all 3 datasets
+cd_joined <- cd_state_year %>%
+  left_join(
+    population_clean,
+    by = c("Year", "State")
+  ) %>%
+  left_join(
+    construction_clean,
+    by = c("Year", "State")
+  )
+
+# Looking at summary of the joined dataset
+summary(cd_joined)
+```
+
+The cleaned external datasets were joined to the original C&D waste data by Year and State. The resulting dataset contains 120 observations, corresponding to 15 years across eight states and territories, with no missing values. This provides a consistent state-year dataset for looking into the relationship between C&D waste, population, construction activity and economic growth.
+
+### 9g. Population Investigation
+
+```{r}
+# Calculating the correlation between Population and C&D waste
+population_cor <- cor(
+  cd_joined$Population,
+  cd_joined$CD_Tonnes,
+  use = "complete.obs"
+)
+
+population_cor
+```
+
+```{r}
+# Plotting scatterplot and linear regression to show relationship
+ggplot(
+  cd_joined,
+  aes(
+    x = Population,
+    y = CD_Tonnes
+  )
+) +
+  geom_point() +
+  geom_smooth(
+    method = "lm",
+    se = FALSE
+  ) +
+  labs(
+    title = "Population and C&D Waste",
+    x = "Population",
+    y = "C&D Waste Tonnes"
+  ) +
+  theme_minimal()
+```
+
+A scatterplot and correlation were used because both Population and C&D waste tonnes are quantitative variables. The scatterplot shows the direction and spread of the relationship, while the correlation measures the strength of their linear association.
+
+Population has a relatively strong positive correlation with C&D waste tonnes (r = 0.720). The upward fitted line indicates that more populated state-year observations generally record higher C&D waste quantities. This supports the idea that part of the variation in C&D waste reflects the scale of each state, as larger populations are associated with greater demand for buildings and infrastructure. However, the considerable spread of observations around the fitted line shows that population alone does not explain all differences in C&D waste. The clustering in the graph also suggests that the relationship may partly reflect persistent differences between large and small states, which is why population should later be considered together with State and the other factors rather than interpreted independently.
+
+### 9h. Construction Work Done Investigation
+
+```{r}
+# Calculating correlation between construction work and C&D waste
+construction_cor <- cor(
+  cd_joined$Construction_Work,
+  cd_joined$CD_Tonnes,
+  use = "complete.obs"
+)
+
+construction_cor
+```
+
+```{r}
+# Plotting scatterplot and linear regression to show relationship
+ggplot(
+  cd_joined,
+  aes(
+    x = Construction_Work,
+    y = CD_Tonnes
+  )
+) +
+  geom_point() +
+  geom_smooth(
+    method = "lm",
+    se = FALSE
+  ) +
+  labs(
+    title = "Construction Activity and C&D Waste",
+    x = "Construction Work Done ($ million)",
+    y = "C&D Waste Tonnes"
+  ) +
+  theme_minimal()
+```
+
+Construction Work Done has a moderate positive correlation with C&D waste tonnes (r = 0.588), indicating that state-year observations with greater construction activity generally also record greater amounts of C&D waste. However, the considerable dispersion around the fitted line shows that the level of construction activity alone does not fully explain waste generation.
+
+A scatterplot and correlation were first used to confirm whether C&D waste generally increases with the level of construction activity. However, because such a relationship is expected, the analysis was extended to examine C&D waste intensity, measured as C&D tonnes generated per \$1 million of construction work.
+
+```{r}
+# Constructing waste intensity over time
+cd_construction_yearly <- cd_joined %>%
+  group_by(Year) %>%
+  summarise(
+    Total_CD_Tonnes =
+      sum(CD_Tonnes),
+    
+    Total_Construction_Work =
+      sum(Construction_Work),
+    
+    CD_Waste_Intensity =
+      Total_CD_Tonnes /
+      Total_Construction_Work,
+    
+    .groups = "drop"
+  )
+
+cd_construction_yearly
+```
+
+Waste intensity was calculated to provide greater insight than the direct construction–waste relationship. Dividing total C&D waste by Construction Work Done controls for the scale of construction activity and shows whether the amount of waste generated relative to construction activity is changing over time.
+
+```{r}
+# Plotting a line graph to show the relationship
+ggplot(
+  cd_construction_yearly,
+  aes(
+    x = Year,
+    y = CD_Waste_Intensity
+  )
+) +
+  geom_line() +
+  geom_point() +
+  labs(
+    title = "C&D Waste Generated per Unit of Construction Activity",
+    x = "Year",
+    y = "C&D Tonnes per $1m Construction Work"
+  ) +
+  theme_minimal()
+```
+
+C&D waste intensity fluctuates at relatively low levels before 2013 but rises sharply thereafter. It increases from approximately 23 tonnes per \$1 million of construction work in 2013 to 96 tonnes in 2020. This indicates that the rapid increase in C&D waste after 2013 cannot be explained simply by an equivalent increase in construction activity. Instead, recorded C&D waste grew substantially faster than the level of construction work during this period. However, a higher waste-intensity ratio should not automatically be interpreted as worsening construction efficiency, because changes in waste reporting, recovery practices or classification may also affect recorded C&D tonnes. The result demonstrates that construction activity alone is insufficient to explain the observed waste trend.
+
+### 9i. Economic Growth Investigation
+
+Economic growth was investigated because broader economic conditions may influence construction, development and demolition activity. A scatterplot and correlation were used to examine whether higher state economic growth is associated with higher C&D waste generation.
+
+```{r}
+# Calculating correlation between Economic Growth and C&D waste
+economic_cor <- cor(
+  cd_joined$Economic_Growth,
+  cd_joined$CD_Tonnes,
+  use = "complete.obs"
+)
+
+economic_cor
+```
+
+```{r}
+# Plotting scatterplot and linear regression to show relationship
+ggplot(
+  cd_joined,
+  aes(
+    x = Economic_Growth,
+    y = CD_Tonnes
+  )
+) +
+  geom_point() +
+  geom_smooth(
+    method = "lm",
+    se = FALSE
+  ) +
+  labs(
+    title = "Economic Growth and C&D Waste",
+    x = "Economic Growth (%)",
+    y = "C&D Waste Tonnes"
+  ) +
+  theme_minimal()
+```
+
+Economic growth shows only a weak negative correlation with C&D waste tonnes (r = -0.210). The observations are widely dispersed and the fitted line shows only a slight downward trend. This suggests that differences in overall economic growth have limited ability to explain the C&D waste trend. In particular, high C&D waste observations occur across a range of economic growth rates, indicating that broader economic performance is less directly related to C&D waste than factors such as population or construction activity.
+
+### 9j. Combined Regression
+
+The individual analyses show how each factor is related to C&D waste separately, but these factors may overlap. For example, states with larger populations may also have greater construction activity. Multiple regression was therefore used to examine whether Population, Construction Work Done and Economic Growth remain associated with C&D waste after controlling for the other variables, State and Year.
+
+C&D waste, population and construction activity differ substantially in scale across states, so logarithmic transformations were used to reduce the influence of very large observations and allow proportional relationships to be examined.
+
+```{r}
+# Forming the combined regression model for C&D waste
+cd_model <- lm(
+  log1p(CD_Tonnes) ~
+    log(Population) +
+    log(Construction_Work) +
+    Economic_Growth +
+    State +
+    Year,
+  data = cd_joined
+)
+
+summary(cd_model)
+```
+
+The combined model is statistically significant overall (p \< 0.001) and has an adjusted R^2^ of 0.852, indicating that approximately 85.2% of the variation in log-transformed C&D waste tonnes is explained by the included factors.
+
+Population remains statistically significant after the other factors are controlled for (p = 0.037), indicating that population retains an association with C&D waste even after fixed differences between states are considered. In contrast, Construction Work Done is not statistically significant after the other variables are considered (p = 0.130), despite having a moderate positive raw correlation with C&D waste. This suggests that part of its initial relationship may overlap with differences in population, state and time. Economic Growth is also not statistically significant (p = 0.737), reinforcing the earlier conclusion that broader economic growth provides little additional explanation of C&D waste. Year is not significant after the other variables are controlled for (p = 0.134), suggesting that the observed upward time trend is better understood through the changing characteristics of the states and other included factors rather than Yea
+
+### Q9 Answer and Justification
+
+Overall, total C&D waste shows some fluctuations before 2013 followed by rapid and consistent growth through 2020. The state-level analysis indicates that this increase is concentrated particularly in larger states such as NSW and Victoria rather than being uniform across Australia. **Population has the strongest individual relationship with C&D waste** among the investigated factors (r = 0.720) and remains significant in the combined model, suggesting that state size is an important contributor. Construction activity is moderately associated with C&D waste when examined alone, but its independent relationship weakens after other factors are controlled for. More importantly, C&D waste generated per unit of construction activity rises sharply after 2013, indicating that the increase in recorded waste is substantially greater than can be explained by construction activity alone. Economic growth shows only a weak relationship. Therefore, the yearly C&D waste trend appears to reflect a combination of state scale and changes in waste intensity rather than simply greater construction activity or stronger economic growth.

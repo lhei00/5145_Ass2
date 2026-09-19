@@ -257,9 +257,7 @@ Since the only missing Description record had already been removed during the ea
 
 ## Q3
 
-**For each Category value, write code to calculate the fractions of waste tonnes of different
-waste sources, and then draw a chart to visualise the fraction numbers specific to the Category
-value (4 marks).**
+**For each Category value, write code to calculate the fractions of waste tonnes of different waste sources, and then draw a chart to visualise the fraction numbers specific to the Category value (4 marks).**
 
 ### 3a. Data inspection and cleaning
 
@@ -350,7 +348,7 @@ q3_summary %>%
   )
 ```
 
-### 3c. Visualising the fractions 
+### 3c. Visualising the fractions
 
 ```{r}
 # Visualise the fractions
@@ -389,12 +387,7 @@ Total tonnes were then calculated for each combination of Category and Stream, a
 
 ## Q4
 
-**Please add the 'Year' and 'State' values from Year_State_ID.csv to Wastes.csv, compute the
-total waste tonnes for each year and state, and store the result in a dataset named 'temp'. Then,
-use a single R function to compute and display the statistical information (i.e., Min, Max, and
-Mean) of the total waste tonnes for each state in ‘temp’ (Note: You may use multiple
-functions/commands to prepare the pre-processed data table, but when you compute and
-display the statistical information, you need to use a single R function.) (4 marks).**
+**Please add the 'Year' and 'State' values from Year_State_ID.csv to Wastes.csv, compute the total waste tonnes for each year and state, and store the result in a dataset named 'temp'. Then, use a single R function to compute and display the statistical information (i.e., Min, Max, and Mean) of the total waste tonnes for each state in ‘temp’ (Note: You may use multiple functions/commands to prepare the pre-processed data table, but when you compute and display the statistical information, you need to use a single R function.) (4 marks).**
 
 ### 4a. Inspecting and cleaning year_state dataset
 
@@ -467,7 +460,11 @@ year_state_clean %>%
 
 ```{r}
 # Removing entries with State as "Australia"
+year_state_clean <- year_state_clean %>%
+  filter(!State == "Australia")
 
+year_state_clean %>%
+  count(State, sort = TRUE)
 ```
 
 ### 4b. Joining the datasets
@@ -479,20 +476,16 @@ wastes_joined <- wastes_clean %>%
     year_state_clean,
     by = c("Year_State_ID" = "ID")
   )
+
+# Removing any NA rows for wastes_joined
+wastes_joined <- na.omit(wastes_joined)
 ```
 
 ```{r}
 # Roughly look at the joined dataset
 glimpse(wastes_joined)
+summary(wastes_joined)
 ```
-
-```{r}
-# Check if any rows were excluded during the join
-nrow(wastes_clean)
-nrow(wastes_joined)
-```
-
-The length of both the datasets matches, meaning that all entries are sucessfully matched with its respective year and state.
 
 ### 4c. Creating temp and displaying the statistical information
 
@@ -517,7 +510,8 @@ temp <- temp %>%
   pivot_wider(
     names_from = State,
     values_from = Total_Tonnes
-  )
+  ) %>%
+  select(-Year)
 
 temp
 ```
@@ -535,10 +529,7 @@ Wastes.csv and Year_State_ID.csv were then combined using a left join, matching 
 
 ## Q5
 
-**A manager wants to see a chart showing a yearly trend of total waste tonnes of food organics
-for each state. To draw the chart, please convert the Year-Year formats of all Year values into
-Year formats (4 marks) (Note: Use the dataset with the converted year format for all
-subsequent questions.)**
+**A manager wants to see a chart showing a yearly trend of total waste tonnes of food organics for each state. To draw the chart, please convert the Year-Year formats of all Year values into Year formats (4 marks) (Note: Use the dataset with the converted year format for all subsequent questions.)**
 
 Back in Q3 and Q4, data inspection and cleaning was already done for both the Tonnes column and the Year column. Therefore, only the Type column is left unchecked.
 
@@ -605,9 +596,7 @@ At the start, no cleaning or inspection was needed for Tonnes and Year values as
 
 ## Q6
 
-**Write code to display the most recycled waste Type and the most energy-recovered waste Type
-with the corresponding year. Write code to display the most increased waste Type over years
-(5 marks).**
+**Write code to display the most recycled waste Type and the most energy-recovered waste Type with the corresponding year. Write code to display the most increased waste Type over years (5 marks).**
 
 For this question, the only column left unchecked and not cleaned is the Fate variable.
 
@@ -704,8 +693,8 @@ type_increase <- wastes_joined %>%
   ) %>%
   group_by(Type) %>%
   summarise(
-    Start_Tonnes = Total_Tonnes[Year == start_year],
-    End_Tonnes = Total_Tonnes[Year == end_year],
+    Start_Tonnes = Total_Tonnes[Year == 2006],
+    End_Tonnes = Total_Tonnes[Year == 2020],
     Increase = End_Tonnes - Start_Tonnes,
     .groups = "drop"
   )
@@ -730,3 +719,387 @@ The most **recycled** waste Type is **Bricks, concrete and pavers**, in year **2
 The most **energy-recovered** waste Type is **Food organics**, in year **2015** with a total Tonnes of **1140998**.
 
 The **most increased** waste Type over years is **Bricks, concrete and pavers**, with a total increase of **8345529** tonnes over the observed years.
+
+## Q7
+
+**Please investigate the factors influencing environmental impact scores. (Note: You may use variables from both Wastes.csv and Year_State_ID.csv for your analysis.) Marks will be awarded based on the depth and breadth of your investigation, including analyses and discussions, as well as the strength of your reasoning in drawing insights and conclusions (5 marks).**
+
+### 7a. Extract and Inspect Impact Score
+
+```{r}
+# Extract Impact Score from Description
+wastes_joined <- wastes_joined %>%
+  mutate(
+    Impact_Score = as.numeric(
+      str_extract(
+        Description,
+        "(?<=Environmental Impact Score: )[0-9]+"
+      )
+    )
+  )
+
+# Inspect count of each Impact Score 
+wastes_joined %>%
+  count(Impact_Score, sort = FALSE)
+
+# Determine if there are any rows with NA Impact Score
+wastes_joined %>%
+  summarise(
+    NA_Impact_Score = sum(is.na(Impact_Score)),
+  )
+
+```
+
+The extracted environmental impact scores contained no missing values and all observed scores fell within the valid 1–10 range. However, the distribution was highly concentrated at a few values rather than being evenly spread across the scale. Score 5 was the most common with 16,100 observations, followed by score 6 with 8,798, score 3 with 6,304 and score 8 with 5,476. Scores 1, 2 and 4 occurred only rarely, while scores 7, 9 and 10 were not observed. This concentration should be considered when interpreting subsequent comparisons, as changes in group averages may be driven by different proportions of these dominant score levels.
+
+### 7b. Investigating Factors Affecting Impact Score
+
+For this analysis, the chosen factors to investigate are as such: Fate, Stream, Category, Tonnes, Core_Non-score, Year, State, Economic_Growth. The factors were chosen because they represent different dimensions that may be associated with environmental impact scores. Fate captures how waste is ultimately managed, while Stream and Category describe the source and broad type of waste. Tonnes represents the scale of the waste process. Core_Non-core distinguishes core waste from mining, agriculture and such non-core waste, which provides another meaningful structural classification. State captures possible geographic differences in waste-management practices, while Year captures possible impact score changes through time. Economic_Growth allows broader economic conditions to be considered. Together, these variables provide a broad investigation using information from both datasets.
+
+#### 7b(i) Check all variables used
+
+```{r}
+# Check the variables used for na entries
+wastes_joined %>%
+  summarise(
+    Missing_Impact_Score = sum(is.na(Impact_Score)),
+    Missing_Tonnes = sum(is.na(Tonnes)),
+    Missing_Fate = sum(is.na(Fate)),
+    Missing_Stream = sum(is.na(Stream)),
+    Missing_Category = sum(is.na(Category)),
+    Missing_State = sum(is.na(State)),
+    Missing_Year = sum(is.na(Year)),
+    Missing_Economic_Growth = sum(is.na(Economic_Growth)),
+    Min_Impact_Score = min(Impact_Score, na.rm = TRUE),
+    Max_Impact_Score = max(Impact_Score, na.rm = TRUE)
+  )
+```
+
+All variables show that no NA values are present, and they were all cleaned in previous questions. Therefore, no further cleaning is needed.
+
+#### Categorical Factors Investigation
+
+#### 7b(ii) 1) Fate Investigation
+
+```{r}
+# Calculating impact_score by Fate
+score_by_fate <- wastes_joined %>%
+  group_by(Fate) %>%
+  summarise(
+    Mean_Score = mean(Impact_Score, na.rm = TRUE),
+    Median_Score = median(Impact_Score, na.rm = TRUE),
+    SD_Score = sd(Impact_Score, na.rm = TRUE),
+    N = n(),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(Mean_Score))
+
+score_by_fate
+```
+
+```{r}
+# Plotting a boxplot to visualise the distribution
+
+ggplot(
+  wastes_joined,
+  aes(
+    x = Fate,
+    y = Impact_Score
+  )
+) +
+  geom_boxplot() +
+  coord_flip() +
+  labs(
+    title = "Environmental impact score by waste fate",
+    x = "Waste fate",
+    y = "Environmental impact score"
+  ) +
+  theme_minimal()
+```
+
+Waste fate shows a clear association with environmental impact score. Recycling has the highest mean score of 6.18, compared with 4.75 for disposal, suggesting that recycling cases tend to receive more positive environmental assessments. The boxplot also shows substantially greater variation for recycling and disposal, whereas energy recovery, long-term storage and waste reuse are concentrated entirely around score 5. An odd observation is disposal having a median of 6 despite its lower mean of 4.75, indicating that there are larger number of lower-scoring disposal cases which pull the average downward. Overall, Fate appears to be an important explanatory factor, although the very small observations of long-term storage and waste reuse cases mean these groups should be interpreted cautiously as they are lacking in data.
+
+#### 7b(ii). 2) Stream Investigation
+
+```{r}
+# Calculating impact_score by Stream
+score_by_stream <- wastes_joined %>%
+  group_by(Stream) %>%
+  summarise(
+    Mean_Score = mean(Impact_Score, na.rm = TRUE),
+    Median_Score = median(Impact_Score, na.rm = TRUE),
+    N = n(),
+    .groups = "drop"
+  )
+
+score_by_stream
+```
+
+```{r}
+# Plotting a boxplot to visualise the distribution
+ggplot(wastes_joined,
+       aes(x = Stream, y = Impact_Score)) +
+  geom_boxplot() +
+  coord_flip() +
+  labs(
+    title = "Environmental Impact Scores by Waste Stream",
+    x = "Waste Stream",
+    y = "Environmental Impact Score"
+  ) +
+  theme_minimal()
+```
+
+Environmental impact scores differ only moderately across waste streams. MSW has the highest mean score at 5.61, followed by C&D at 5.43 and C&I at 5.22, while all three streams have a median score of 5. The boxplot indicates that MSW contains a greater proportion of higher impact scores, whereas C&I displays a wider spread toward lower values. However, the relatively small differences in the means suggest that Stream alone is unlikely to explain a large proportion of the variation in environmental impact scores.
+
+#### 7b(ii.) 3) Category Investigation
+
+```{r}
+# Calculating impact_score by Category
+score_by_category <- wastes_joined %>%
+  group_by(Category) %>%
+  summarise(
+    Mean_Score = mean(Impact_Score, na.rm = TRUE),
+    Median_Score = median(Impact_Score, na.rm = TRUE),
+    N = n(),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(Mean_Score))
+
+score_by_category
+```
+
+```{r}
+# Plotting a boxplot to visualise the distribution
+ggplot(wastes_joined,
+       aes(x = reorder(Category, Impact_Score, FUN = median),
+           y = Impact_Score)) +
+  geom_boxplot() +
+  coord_flip() +
+  labs(
+    title = "Environmental Impact Scores by Waste Category",
+    x = "Waste Category",
+    y = "Environmental Impact Score"
+  ) +
+  theme_minimal()
+```
+
+Waste Category shows quite some great differences in environmental impact scores. Metals has the highest mean score of 6.70 and a median of 8, indicating that metal waste processes are concentrated toward more positive environmental effects. Glass, plastics and building and demolition materials also have relatively high average scores above 6. In contrast, Organics records the lowest mean score of 4.85. The boxplots also suggest that the material being processed is meaningfully associated with environmental impact. However, the group sizes are highly unequal, particularly because hazardous waste accounts for 28046 observations and Organics with 4213 observations, while other categories' obervations are in the hundreds. Therefore, category comparisons should be interpreted alongside a combined regression rather than from means alone.
+
+#### 7b(ii.) 4) Core_Non-core Investigation
+
+```{r}
+# Calculating impact_score by Core_Non-core
+score_by_core <- wastes_joined %>%
+  group_by(`Core_Non-core`) %>%
+  summarise(
+    Mean_Score = mean(Impact_Score, na.rm = TRUE),
+    Median_Score = median(Impact_Score, na.rm = TRUE),
+    N = n(),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(Mean_Score))
+
+score_by_core
+```
+
+Non-core waste has a higher mean environmental impact score of 6.03 compared with 5.34 for core waste. However, this comparison should be treated cautiously because the groups are extremely imbalanced: only 125 observations are classified as non-core waste compared with 36563 core-waste observations. Therefore, the raw difference in means does not by itself provide strong evidence that core classification independently influences environmental impact.
+
+#### 7b(ii.) 5) State Investigation
+
+```{r}
+# Calculating impact_score by State
+score_by_state <- wastes_joined %>%
+  group_by(State) %>%
+  summarise(
+    Mean_Score = mean(Impact_Score, na.rm = TRUE),
+    Median_Score = median(Impact_Score, na.rm = TRUE),
+    N = n(),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(Mean_Score))
+
+score_by_state
+```
+
+Geographic differences in environmental impact scores are relatively small. Vic records the highest mean score at 5.53, whereas ACT records the lowest at 5.17. All states have the same median score of 5. The narrow range of approximately 0.36 points suggests that State is associated with some variation in scores, but the differences are smaller than those observed for Fate and Category.
+
+#### Numerical Factors Investigation
+
+#### 7b(iii.) 1) Tonnes Investigation
+
+As Tonnes have a distribution of zero to millions of tonnes as inspected previously, it is very likely to be highly skewed if plotted as it is. Therefore, log1p() will be used to transform the waste tonnes into logarithmic to show its relationship.
+
+```{r}
+# Calculating the correlation of Tonnes and Impact Score
+tonnes_cor <- cor(
+  log1p(wastes_joined$Tonnes),
+  wastes_joined$Impact_Score,
+  use = "complete.obs"
+)
+
+tonnes_cor
+```
+
+```{r}
+# Plotting a scatter plot and linear regression to show the relationship
+ggplot(wastes_joined,
+       aes(x = log1p(Tonnes),
+           y = Impact_Score)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(
+    title = "Waste Quantity and Environmental Impact Score",
+    x = "log(1 + Tonnes)",
+    y = "Environmental Impact Score"
+  ) +
+  theme_minimal()
+```
+
+The correlation between log-transformed waste tonnes and environmental impact score is r=0.078, indicating a very weak positive linear relationship. The fitted regression line slopes slightly upward, but the effect is minimal. The scatterplot also shows strong horizontal clustering around impact scores 3, 5 and 8, reflecting the discrete distribution of the response variable rather than a clear relationship with waste quantity. Therefore, the scale of the waste process, measured by Tonnes, provides little explanatory power when considered by itself.
+
+#### 7b(iii.) 2) Year Investigation
+
+```{r}
+# Calculating impact_score by Year
+score_by_year <- wastes_joined %>%
+  group_by(Year) %>%
+  summarise(
+    Mean_Impact_Score = mean(Impact_Score, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+score_by_year
+```
+
+```{r}
+# Plotting a line graph to show the relationship
+ggplot(score_by_year,
+       aes(x = Year, y = Mean_Impact_Score)) +
+  geom_line() +
+  geom_point() +
+  labs(
+    title = "Mean Environmental Impact Score Over Time",
+    x = "Year",
+    y = "Mean Environmental Impact Score"
+  ) +
+  theme_minimal()
+```
+
+The mean environmental impact scores show a gradual upward trend over the study period. The average increases from 5.24 in 2006 to 5.46 in 2020, reaching a peak of 5.49 in 2019. This indicates that environmental impact assessments became slightly more positive over time. However, the total increase is only about 0.22 points across the full period, so the magnitude of the change is small. Year may therefore have a statistically detectable association with impact score without necessarily representing a large practical effect.
+
+#### 7b(iii.) 3) Economic Growth Investigation
+
+Economic_Growth belongs to a State-Year combination and is repeated across many waste rows, therefore the investigation should be grouped by State-Year.
+
+```{r}
+# Calculating impact_score by Economic Growth
+score_by_economic <- wastes_joined %>%
+  group_by(State, Year, Economic_Growth) %>%
+  summarise(
+    Mean_Impact_Score = mean(Impact_Score, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+score_by_economic
+```
+
+```{r}
+# Plotting a scatterplot and linear regression to show the relationship
+ggplot(score_by_economic,
+       aes(x = Economic_Growth,
+           y = Mean_Impact_Score)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(
+    title = "Economic Growth and Environmental Impact Score",
+    x = "Economic Growth (%)",
+    y = "Mean Environmental Impact Score"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+# Calculating the correlation of Economic Growth and Impact Score
+economic_cor <- cor(
+  score_by_economic$Economic_Growth,
+  score_by_economic$Mean_Impact_Score,
+  use = "complete.obs"
+)
+
+economic_cor
+```
+
+Economic growth has a weak negative correlation with mean environmental impact score at the State-Year level (r=-0.177). The scatterplot shows a slight downward fitted trend, suggesting that State-Year observations with higher economic growth tend to have lower environmental impact scores. However, the relationship is weak and the observations remain widely dispersed around the fitted line. Economic growth therefore appears to have limited explanatory power compared with more direct waste-process characteristics such as Fate and Category.
+
+### 7c. Combined Regression
+
+Multiple regression was used to examine the relationship between environmental impact score and several factors simultaneously. While the earlier descriptive analyses show how each factor is associated with the score individually, these relationships may not be the only explanation. Multiple regression helps isolate the association of each factor while controlling for the others, providing a clearer view of which variables remain important predictors of environmental impact score.
+
+```{r}
+# Forming the combined regression model for Impact Score
+impact_model <- lm(
+  Impact_Score ~ log1p(Tonnes) +
+    Fate +
+    Stream +
+    Category +
+    `Core_Non-core` +
+    State +
+    Year,
+  data = wastes_joined
+)
+
+summary(impact_model)
+```
+
+From the impact_model, we can see that R^2^ = 0.2316 and Adjusted R^2^ = 0.231. Overall, the model shows p \< 2.2 x 10^-16^.
+
+The multiple linear regression is statistically significant overall (p\<0.001), indicating that the included factors jointly provide information about environmental impact scores. However, the adjusted R^2^ of 0.231 indicates that the model explains only approximately 23.1% of the observed variation in impact scores. Therefore, while the available waste characteristics are associated with environmental impact, a large proportion of the variation remains unexplained by the variables in the dataset.
+
+**Fate**
+
+The referenced category is Disposal.
+
+Fate remains one of the strongest factors after controlling for the other variables. Recycling is associated with an environmental impact score approximately 1.36 points higher than disposal on average, while energy recovery is associated with an increase of approximately 0.39 points. Both relationships are statistically significant. In contrast, waste reuse is not statistically different from disposal (p=0.640), although this result should be interpreted cautiously because waste reuse contains very few observations. These results further supports the earlier finding that the ultimate destination of waste is strongly associated with its environmental impact assessment.
+
+**Stream**
+
+The referenced category is C&D.
+
+After controlling for other variables, both C&I and MSW have lower estimated environmental impact scores than the C&D reference stream. C&I is approximately 0.31 points lower and MSW approximately 0.12 points lower. This differs from the raw descriptive results, where MSW had the highest mean score. The change suggests that the raw stream differences were partly explained by differences in the types of materials and treatment methods occurring within each stream.
+
+**Category**
+
+The referenced category is Ash.
+
+Waste Category also remains associated with environmental impact score after controlling for the other factors. Relative to the Ash reference category, Organics has the largest negative coefficient at approximately −1.32 points, followed by unclassified materials and textiles, leather and rubber. This supports the previous analysis showing that Organics has one of the lowest average impact scores. The category results suggest that the type of material being processed contributes meaningfully to environmental impact assessments even after treatment pathway, stream, state and year are taken into account.
+
+**Tonnes**
+
+The log-transformed Tonnes has a positive and statistically significant coefficient of approximately 0.035. However, the magnitude is very small, which is consistent with the earlier correlation of only 0.078. Therefore, waste quantity may have a detectable relationship with environmental impact score because of the large sample size, but its practical explanatory effect appears limited.
+
+**State**
+
+The referenced category is ACT.
+
+Some geographic differences remain after controlling for waste characteristics. Relative to ACT, NSW, Victoria and WA have estimated scores approximately 0.25, 0.23 and 0.15 points higher respectively. Queensland does not differ significantly from ACT (p=0.375). Although several state effects are statistically significant, their magnitudes are relatively small, supporting the earlier conclusion that geographic location is a secondary factor compared with Fate and Category.
+
+**Year**
+
+Year has a positive and statistically significant coefficient of approximately 0.0126, meaning that environmental impact scores increase by around 0.013 points per year on average after controlling for the other included variables. Although the relationship is statistically significant, the annual effect is small, which is consistent with the gradual trend observed in the previous analysis.
+
+**Core_Non-core**
+
+The regression output shows NA for Core_Non-score and R mentions that '1 not defined because of singularities'. Core_Non-core could not be independently estimated in the multiple regression because the model identified a singularity, which indicates a perfect collinearity with another included predictor. Therefore, although Core/Non-core was useful for descriptive comparison, its independent effect cannot be separated from the other variables in this model.
+
+### Q7 Answer and Justification
+
+Overall, the analysis indicates that environmental impact scores are associated with several waste-process characteristics, but their explanatory strength differs. Fate and Category show the clearest relationships, where recycling has substantially higher scores than disposal after controlling for other factors, while Organics is associated with comparatively lower scores. Stream also contributes to score differences, although its raw relationship changes after other variables are controlled for, demonstrating the importance of considering multiple factors simultaneously. Waste quantity and Year are statistically significant but have relatively small effect sizes, while State shows slight geographic variation. Economic growth only has a weak negative relationship with mean impact score at the State-Year level. The regression model explains approximately 23.1% of the variation in environmental impact scores, indicating that the available variables provide useful but incomplete explanatory power. The findings therefore suggest that **how waste is managed** and **what material is being processed** are more strongly associated with environmental impact scores than waste quantity, geographic location or broader economic conditions. These relationships should be interpreted as associations rather than direct causal effects.
+
+## Q8
+
+**A manager is deciding where to invest in large-scale tyre processing capacity, and she wants
+to understand the disposal size variation and disposal frequency for each state. Create a
+relevant plot to support the manager's decision. Justify your choice, and explain what the plot
+tells her. (5 marks)**
+
+### 8a. Extracting Tyre Disposals
